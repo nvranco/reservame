@@ -8,14 +8,16 @@ Pensada para mostrarla: datos de ejemplo hardcodeados, todo en memoria y todo si
 ## Qué hace
 
 **Jugador** (`/cancha/la-redonda`, `/cancha/el-potrero`, `/cancha/los-pibes`)
-1. Ve la grilla de horarios libres y ocupados de los próximos 7 días.
-2. Elige un horario, deja nombre y teléfono y reserva.
-3. Pantalla final con los pasos: botón **Abrir WhatsApp** (mensaje prefijado, visible), transferir la seña al alias de la cancha y esperar la validación dentro del plazo (por defecto 2 h). El comprobante lo manda el jugador por WhatsApp; la app no lo toca.
-4. Puede cancelar su reserva dentro del plazo.
+1. Elige primero la **cancha** del complejo (cada una con su tipo y su seña).
+2. Ve la grilla de horarios libres y ocupados de los próximos 7 días.
+3. Elige un horario, deja nombre y teléfono y reserva.
+4. Pantalla final con los pasos: botón **Abrir WhatsApp** (mensaje prefijado, visible), transferir la seña al alias de la cancha y esperar la validación dentro del plazo (por defecto 2 h). El comprobante lo manda el jugador por WhatsApp; la app no lo toca.
+5. Puede cancelar su reserva dentro del plazo.
 
 **Admin** (`/admin`, botón "Entrar como admin", sin contraseña)
-- Ver y editar la cancha: nombre, dirección, seña por hora, alias, plazo de validación.
-- Link público con botón para copiar.
+- Un complejo con **varias canchas**: agregar, editar (nombre, tipo, seña por hora), activar o desactivar cada una. Cada cancha tiene su propia grilla.
+- Editar el complejo: nombre, dirección, alias, WhatsApp y plazo de validación.
+- Link público del complejo con botón para copiar.
 - Reservas con estados **Pendiente → Confirmada → Cancelada** (la cancelada es final).
 - Reservas manuales y bloqueo de horarios desde la grilla.
 - Lista de avisos simulados (mails y WhatsApp). Al cancelar una reserva, el jugador recibe un aviso simulado que ve en su pantalla.

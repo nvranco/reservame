@@ -15,11 +15,11 @@ def _no_encontrada(texto: str):
 
 @ui.page('/cancha/{slug}')
 def cancha_publica(slug: str):
-    c = store.canchas.get(slug)
+    c = store.complejos.get(slug)
     if not c:
         return _no_encontrada('No encontramos esa cancha')
 
-    state = {'dia': 0, 'hora': None, 'nombre': '', 'telefono': '', 'seen': store.version}
+    state = {'cancha': None, 'dia': 0, 'hora': None, 'nombre': '', 'telefono': '', 'seen': store.version}
     dias = store.fechas()
 
     with theme.frame():
@@ -30,16 +30,42 @@ def cancha_publica(slug: str):
                 with ui.row().classes('items-center gap-1 no-wrap'):
                     ui.icon('place')
                     ui.label(c.direccion)
-                ui.html(f'<p>Seña por hora: <b id="sena">{store.ars(c.sena)}</b></p>')
-                ui.label('Elegí un horario libre, dejá tus datos y listo.').classes('text-sm opacity-90 mt-2')
+                ks0 = store.canchas_de(slug, solo_activas=True)
+                ui.html(f'<p>{len(ks0)} canchas · seña desde <b>{store.ars(min(k.sena for k in ks0))}</b> por hora</p>')
+                ui.label('Elegí la cancha, un horario libre, dejá tus datos y listo.').classes('text-sm opacity-90 mt-2')
 
             # ---- grilla + formulario
             with ui.column().classes('lg:col-span-3 w-full gap-4'):
                 @ui.refreshable
+                def selector_cancha():
+                    ks = store.canchas_de(slug, solo_activas=True)
+                    if state['cancha'] not in [k.id for k in ks]:
+                        state['cancha'], state['hora'] = None, None
+                    with ui.column().classes('card-r p-4 w-full gap-3'):
+                        ui.label('1. Elegí la cancha').classes('font-extrabold')
+                        with ui.element('div').classes('grid grid-cols-1 sm:grid-cols-2 gap-2 w-full'):
+                            for k in ks:
+                                sel = state['cancha'] == k.id
+                                with ui.element('div').classes('cancha-opt' + (' cancha-sel' if sel else '')).on(
+                                        'click', lambda _, kid=k.id: elegir_cancha(kid)):
+                                    with ui.row().classes('items-center justify-between no-wrap w-full'):
+                                        ui.label(k.nombre).classes('font-extrabold')
+                                        if sel:
+                                            ui.icon('check_circle')
+                                    ui.label(k.tipo).classes('text-xs opacity-80')
+                                    ui.label(f'Seña {store.ars(k.sena)} por hora').classes('text-sm font-bold')
+
+                def elegir_cancha(kid):
+                    state['cancha'], state['hora'] = kid, None
+                    selector_cancha.refresh(); grilla.refresh(); formulario.refresh()
+
+                @ui.refreshable
                 def grilla():
+                    if state['cancha'] is None:
+                        return
                     fecha = dias[state['dia']]
                     with ui.column().classes('card-r p-4 w-full gap-3'):
-                        ui.label('1. Elegí día y horario').classes('font-extrabold')
+                        ui.label('2. Elegí día y horario').classes('font-extrabold')
 
                         def cambiar_dia(i):
                             state['dia'], state['hora'] = i, None
@@ -48,7 +74,7 @@ def cancha_publica(slug: str):
                         theme.selector_dias(dias, state['dia'], cambiar_dia)
                         with ui.element('div').classes('grid grid-cols-2 sm:grid-cols-4 gap-2 w-full'):
                             for h in store.HORAS:
-                                st, _ = store.estado_slot(slug, fecha, h)
+                                st, _ = store.estado_slot(state['cancha'], fecha, h)
                                 if st == 'libre':
                                     cls = 'slot slot-sel' if state['hora'] == h else 'slot slot-libre'
                                     with ui.element('div').classes(cls).on('click', lambda _, h=h: elegir(h)):
@@ -67,16 +93,17 @@ def cancha_publica(slug: str):
 
                 @ui.refreshable
                 def formulario():
-                    if state['hora'] is None:
+                    if state['cancha'] is None or state['hora'] is None:
                         return
                     fecha = dias[state['dia']]
-                    if store.estado_slot(slug, fecha, state['hora'])[0] != 'libre':
+                    if store.estado_slot(state['cancha'], fecha, state['hora'])[0] != 'libre':
                         state['hora'] = None
                         return
+                    k = store.canchas[state['cancha']]
                     with ui.column().classes('card-r p-4 w-full gap-3'):
-                        ui.label('2. Tus datos').classes('font-extrabold')
-                        ui.html(f'<b>{store.fmt_fecha(fecha)}</b> · {store.fmt_turno(state["hora"])}hs · '
-                                f'Seña <b>{store.ars(c.sena)}</b>')
+                        ui.label('3. Tus datos').classes('font-extrabold')
+                        ui.html(f'<b>{k.nombre}</b> ({k.tipo}) · <b>{store.fmt_fecha(fecha)}</b> · {store.fmt_turno(state["hora"])}hs · '
+                                f'Seña <b>{store.ars(k.sena)}</b>')
                         ui.input('Nombre y apellido').props('outlined rounded dense').classes('w-full').bind_value(state, 'nombre')
                         ui.input('Teléfono (WhatsApp)', placeholder='11 5555 1234').props(
                             'outlined rounded dense type=tel').classes('w-full').bind_value(state, 'telefono')
@@ -90,7 +117,7 @@ def cancha_publica(slug: str):
                     if len([ch for ch in tel if ch.isdigit()]) < 8:
                         ui.notify('Revisá el teléfono: necesitamos al menos 8 dígitos', type='warning', position='top'); return
                     try:
-                        r = store.crear_reserva(slug, dias[state['dia']], state['hora'], nombre, tel)
+                        r = store.crear_reserva(state['cancha'], dias[state['dia']], state['hora'], nombre, tel)
                     except ValueError as e:
                         ui.notify(str(e), type='negative', position='top')
                         state['hora'] = None
@@ -99,13 +126,14 @@ def cancha_publica(slug: str):
                     ui.notify('¡Reserva creada! Seguí los pasos para señar.', type='positive', position='top')
                     ui.navigate.to(f'/cancha/{slug}/reserva/{r.id}')
 
+                selector_cancha()
                 grilla()
                 formulario()
 
                 def tick():
                     if store.version != state['seen']:
                         state['seen'] = store.version
-                        grilla.refresh(); formulario.refresh()
+                        selector_cancha.refresh(); grilla.refresh(); formulario.refresh()
 
                 ui.timer(2.0, tick)
 
@@ -115,7 +143,8 @@ def reserva_publica(slug: str, rid: int):
     r = store.reservas.get(rid)
     if not r or r.slug != slug:
         return _no_encontrada('No encontramos esa reserva')
-    c = store.canchas[slug]
+    c = store.complejos[slug]
+    k = store.canchas[r.cancha_id]
     state = {'seen': -1}
 
     with theme.frame():
@@ -133,7 +162,7 @@ def reserva_publica(slug: str, rid: int):
                 with ui.column().classes(f'card-r p-5 w-full gap-1 items-center text-center'):
                     ui.icon(icono, size='3rem', color=color)
                     ui.label(titulo).classes('text-xl font-extrabold')
-                    ui.label(f'{c.nombre} · {store.fmt_fecha(r.fecha)} · {store.fmt_turno(r.hora)}hs').classes('muted')
+                    ui.label(f'{c.nombre} · {k.nombre} · {store.fmt_fecha(r.fecha)} · {store.fmt_turno(r.hora)}hs').classes('muted')
                     ui.label(f'A nombre de {r.nombre} · Reserva #{r.id}').classes('text-sm muted')
                     if est == 'Cancelada':
                         quien = store.MOTIVOS.get(r.cancelada_por or '', 'la cancha')
@@ -161,7 +190,7 @@ def reserva_publica(slug: str, rid: int):
                         with ui.row().classes('no-wrap gap-3 w-full items-start'):
                             ui.html('<div class="step-num">2</div>')
                             with ui.column().classes('gap-1'):
-                                ui.html(f'<b>Transferí la seña de {store.ars(c.sena)} al alias {c.alias}</b>')
+                                ui.html(f'<b>Transferí la seña de {store.ars(k.sena)} al alias {c.alias}</b>')
                                 ui.button('Copiar alias', icon='content_copy',
                                           on_click=lambda: theme.copiar(c.alias, 'Alias copiado')).props(
                                     'outline rounded no-caps size=sm color=primary')

@@ -48,6 +48,9 @@ body {
 .slot-adm-conf { background:#d9f2dd; color:#1c6129; border-color:#a9d9b0; cursor:pointer; }
 .slot-bloqueado { background:#e3e6e3; color:#5f6a62; border-color:#ccd2cc; cursor:pointer; }
 .slot-pasado { background:#f6f6f4; color:#b5b8b3; cursor:default; }
+.cancha-opt { border-radius:16px; padding:12px 14px; background:#f4faf3; border:1.5px solid #cfe5d2; cursor:pointer; transition: all .15s; user-select:none; display:flex; flex-direction:column; gap:2px; }
+.cancha-opt:hover { border-color:#2f8f3e; transform: translateY(-1px); }
+.cancha-sel { background:#2f8f3e; color:#fff; border-color:#1f6b2d; box-shadow:0 4px 14px rgba(47,143,62,.35); }
 .step-num { width:34px; height:34px; min-width:34px; border-radius:50%; background:#2f8f3e; color:#fff; font-weight:800; display:flex; align-items:center; justify-content:center; }
 .wa-box { background:#f4faf3; border:1px dashed #9fcfa6; border-radius:14px; padding:12px 14px; font-size:.92rem; color:#2c4a31; }
 .day-strip { scrollbar-width: thin; }
